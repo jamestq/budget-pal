@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Financial Planner</title>
+    <title>Enhanced Financial Planner</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -51,17 +51,18 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            margin-right: 5px;
         }
 
         button:hover {
             background-color: #2980b9;
         }
 
-        .expense-list {
+        .expense-list, .income-list {
             margin-top: 10px;
         }
 
-        .expense-item {
+        .expense-item, .income-item {
             display: flex;
             justify-content: space-between;
             padding: 8px;
@@ -72,6 +73,20 @@
             background-color: #e74c3c;
             padding: 5px 10px;
             margin-left: 10px;
+        }
+
+        .income {
+            color: #27ae60;
+        }
+
+        .expense {
+            color: #c0392b;
+        }
+
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
         }
     </style>
 </head>
@@ -96,6 +111,46 @@
     </div>
 
     <div class="card">
+        <h2>Periodic Income</h2>
+        <div class="form-group">
+            <label for="periodicIncomeName">Income Name:</label>
+            <input type="text" id="periodicIncomeName">
+            
+            <label for="periodicIncomeAmount">Amount:</label>
+            <input type="number" id="periodicIncomeAmount" step="0.01">
+            
+            <label for="periodicIncomeFrequency">Frequency:</label>
+            <select id="periodicIncomeFrequency">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Bi-weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+            </select>
+            
+            <button onclick="addPeriodicIncome()">Add Periodic Income</button>
+        </div>
+        <div id="periodicIncomeList" class="income-list"></div>
+    </div>
+
+    <div class="card">
+        <h2>Unplanned Income</h2>
+        <div class="form-group">
+            <label for="unplannedIncomeName">Income Name:</label>
+            <input type="text" id="unplannedIncomeName">
+            
+            <label for="unplannedIncomeAmount">Amount:</label>
+            <input type="number" id="unplannedIncomeAmount" step="0.01">
+            
+            <label for="unplannedIncomeDate">Date:</label>
+            <input type="date" id="unplannedIncomeDate">
+            
+            <button onclick="addUnplannedIncome()">Add Unplanned Income</button>
+        </div>
+        <div id="unplannedIncomeList" class="income-list"></div>
+    </div>
+
+    <div class="card">
         <h2>Periodic Expenses</h2>
         <div class="form-group">
             <label for="periodicExpenseName">Expense Name:</label>
@@ -108,6 +163,7 @@
             <select id="periodicExpenseFrequency">
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
+                <option value="biweekly">Bi-weekly</option>
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>
             </select>
@@ -134,16 +190,90 @@
         <div id="unplannedExpensesList" class="expense-list"></div>
     </div>
 
+    <div class="action-buttons">
+        <button onclick="saveToFile()">Save to File</button>
+        <button onclick="loadFromFile()">Load from File</button>
+        <input type="file" id="fileInput" style="display: none;" accept=".json">
+    </div>
+
     <script>
         let currentBalance = 0;
         let periodicExpenses = [];
         let unplannedExpenses = [];
+        let periodicIncome = [];
+        let unplannedIncome = [];
+
+        // Load data from localStorage on page load
+        function loadFromStorage() {
+            const data = localStorage.getItem('financialPlannerData');
+            if (data) {
+                const parsedData = JSON.parse(data);
+                currentBalance = parsedData.currentBalance || 0;
+                periodicExpenses = parsedData.periodicExpenses || [];
+                unplannedExpenses = parsedData.unplannedExpenses || [];
+                periodicIncome = parsedData.periodicIncome || [];
+                unplannedIncome = parsedData.unplannedIncome || [];
+                updateDisplay();
+                updatePeriodicExpensesList();
+                updateUnplannedExpensesList();
+                updatePeriodicIncomeList();
+                updateUnplannedIncomeList();
+            }
+        }
+
+        // Save data to localStorage
+        function saveToStorage() {
+            const data = {
+                currentBalance,
+                periodicExpenses,
+                unplannedExpenses,
+                periodicIncome,
+                unplannedIncome
+            };
+            localStorage.setItem('financialPlannerData', JSON.stringify(data));
+        }
 
         function setInitialBalance() {
             const balance = parseFloat(document.getElementById('initialBalance').value);
             if (!isNaN(balance)) {
                 currentBalance = balance;
                 updateDisplay();
+                saveToStorage();
+            }
+        }
+
+        function addPeriodicIncome() {
+            const name = document.getElementById('periodicIncomeName').value;
+            const amount = parseFloat(document.getElementById('periodicIncomeAmount').value);
+            const frequency = document.getElementById('periodicIncomeFrequency').value;
+            
+            if (name && !isNaN(amount)) {
+                periodicIncome.push({ name, amount, frequency });
+                updatePeriodicIncomeList();
+                updateProjection();
+                saveToStorage();
+                
+                // Clear inputs
+                document.getElementById('periodicIncomeName').value = '';
+                document.getElementById('periodicIncomeAmount').value = '';
+            }
+        }
+
+        function addUnplannedIncome() {
+            const name = document.getElementById('unplannedIncomeName').value;
+            const amount = parseFloat(document.getElementById('unplannedIncomeAmount').value);
+            const date = document.getElementById('unplannedIncomeDate').value;
+            
+            if (name && !isNaN(amount) && date) {
+                unplannedIncome.push({ name, amount, date });
+                updateUnplannedIncomeList();
+                updateProjection();
+                saveToStorage();
+                
+                // Clear inputs
+                document.getElementById('unplannedIncomeName').value = '';
+                document.getElementById('unplannedIncomeAmount').value = '';
+                document.getElementById('unplannedIncomeDate').value = '';
             }
         }
 
@@ -156,6 +286,7 @@
                 periodicExpenses.push({ name, amount, frequency });
                 updatePeriodicExpensesList();
                 updateProjection();
+                saveToStorage();
                 
                 // Clear inputs
                 document.getElementById('periodicExpenseName').value = '';
@@ -172,6 +303,7 @@
                 unplannedExpenses.push({ name, amount, date });
                 updateUnplannedExpensesList();
                 updateProjection();
+                saveToStorage();
                 
                 // Clear inputs
                 document.getElementById('unplannedExpenseName').value = '';
@@ -180,16 +312,62 @@
             }
         }
 
+        function deletePeriodicIncome(index) {
+            periodicIncome.splice(index, 1);
+            updatePeriodicIncomeList();
+            updateProjection();
+            saveToStorage();
+        }
+
+        function deleteUnplannedIncome(index) {
+            unplannedIncome.splice(index, 1);
+            updateUnplannedIncomeList();
+            updateProjection();
+            saveToStorage();
+        }
+
         function deletePeriodicExpense(index) {
             periodicExpenses.splice(index, 1);
             updatePeriodicExpensesList();
             updateProjection();
+            saveToStorage();
         }
 
         function deleteUnplannedExpense(index) {
             unplannedExpenses.splice(index, 1);
             updateUnplannedExpensesList();
             updateProjection();
+            saveToStorage();
+        }
+
+        function updatePeriodicIncomeList() {
+            const list = document.getElementById('periodicIncomeList');
+            list.innerHTML = '';
+            
+            periodicIncome.forEach((income, index) => {
+                const div = document.createElement('div');
+                div.className = 'income-item';
+                div.innerHTML = `
+                    <span class="income">${income.name} - $${income.amount.toFixed(2)} (${income.frequency})</span>
+                    <button class="delete-btn" onclick="deletePeriodicIncome(${index})">Delete</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function updateUnplannedIncomeList() {
+            const list = document.getElementById('unplannedIncomeList');
+            list.innerHTML = '';
+            
+            unplannedIncome.forEach((income, index) => {
+                const div = document.createElement('div');
+                div.className = 'income-item';
+                div.innerHTML = `
+                    <span class="income">${income.name} - $${income.amount.toFixed(2)} (${income.date})</span>
+                    <button class="delete-btn" onclick="deleteUnplannedIncome(${index})">Delete</button>
+                `;
+                list.appendChild(div);
+            });
         }
 
         function updatePeriodicExpensesList() {
@@ -200,7 +378,7 @@
                 const div = document.createElement('div');
                 div.className = 'expense-item';
                 div.innerHTML = `
-                    ${expense.name} - $${expense.amount.toFixed(2)} (${expense.frequency})
+                    <span class="expense">${expense.name} - $${expense.amount.toFixed(2)} (${expense.frequency})</span>
                     <button class="delete-btn" onclick="deletePeriodicExpense(${index})">Delete</button>
                 `;
                 list.appendChild(div);
@@ -215,69 +393,27 @@
                 const div = document.createElement('div');
                 div.className = 'expense-item';
                 div.innerHTML = `
-                    ${expense.name} - $${expense.amount.toFixed(2)} (${expense.date})
+                    <span class="expense">${expense.name} - $${expense.amount.toFixed(2)} (${expense.date})</span>
                     <button class="delete-btn" onclick="deleteUnplannedExpense(${index})">Delete</button>
                 `;
                 list.appendChild(div);
             });
         }
 
-        function calculatePeriodicExpenseAmount(expense, days) {
+        function calculatePeriodicAmount(item, days) {
             let dailyAmount = 0;
-            switch(expense.frequency) {
+            switch(item.frequency) {
                 case 'daily':
-                    dailyAmount = expense.amount;
+                    dailyAmount = item.amount;
                     break;
                 case 'weekly':
-                    dailyAmount = expense.amount / 7;
+                    dailyAmount = item.amount / 7;
+                    break;
+                case 'biweekly':
+                    dailyAmount = item.amount / 14;
                     break;
                 case 'monthly':
-                    dailyAmount = expense.amount / 30.44; // Average days in a month
+                    dailyAmount = item.amount / 30.44; // Average days in a month
                     break;
-                case 'yearly':
-                    dailyAmount = expense.amount / 365.25; // Account for leap years
-                    break;
-            }
-            return dailyAmount * days;
         }
-
-        function updateProjection() {
-            const projectionDate = new Date(document.getElementById('projectionDate').value);
-            if (!projectionDate) return;
-
-            const today = new Date();
-            const daysDifference = Math.ceil((projectionDate - today) / (1000 * 60 * 60 * 24));
-            
-            let projectedAmount = currentBalance;
-
-            // Calculate periodic expenses
-            periodicExpenses.forEach(expense => {
-                projectedAmount -= calculatePeriodicExpenseAmount(expense, daysDifference);
-            });
-
-            // Add unplanned expenses that fall within the projection period
-            unplannedExpenses.forEach(expense => {
-                const expenseDate = new Date(expense.date);
-                if (expenseDate <= projectionDate && expenseDate >= today) {
-                    projectedAmount -= expense.amount;
-                }
-            });
-
-            document.getElementById('projectedBalance').textContent = `$${projectedAmount.toFixed(2)}`;
-        }
-
-        function updateDisplay() {
-            document.getElementById('currentBalance').textContent = `$${currentBalance.toFixed(2)}`;
-            updateProjection();
-        }
-
-        // Add event listener for projection date changes
-        document.getElementById('projectionDate').addEventListener('change', updateProjection);
-
-        // Set initial date to tomorrow
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        document.getElementById('projectionDate').value = tomorrow.toISOString().split('T')[0];
-    </script>
-</body>
-</html>
+}
