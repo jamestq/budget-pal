@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Financial Planner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .balance {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .expense-list {
+            margin-top: 10px;
+        }
+
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .delete-btn {
+            background-color: #e74c3c;
+            padding: 5px 10px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Current Balance</h2>
+        <div class="balance" id="currentBalance">$0.00</div>
+        <div class="form-group">
+            <label for="initialBalance">Set Initial Balance:</label>
+            <input type="number" id="initialBalance" step="0.01">
+            <button onclick="setInitialBalance()">Set Balance</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Projected Balance</h2>
+        <div class="form-group">
+            <label for="projectionDate">Project to date:</label>
+            <input type="date" id="projectionDate">
+        </div>
+        <div class="balance" id="projectedBalance">$0.00</div>
+    </div>
+
+    <div class="card">
+        <h2>Periodic Expenses</h2>
+        <div class="form-group">
+            <label for="periodicExpenseName">Expense Name:</label>
+            <input type="text" id="periodicExpenseName">
+            
+            <label for="periodicExpenseAmount">Amount:</label>
+            <input type="number" id="periodicExpenseAmount" step="0.01">
+            
+            <label for="periodicExpenseFrequency">Frequency:</label>
+            <select id="periodicExpenseFrequency">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+            </select>
+            
+            <button onclick="addPeriodicExpense()">Add Periodic Expense</button>
+        </div>
+        <div id="periodicExpensesList" class="expense-list"></div>
+    </div>
+
+    <div class="card">
+        <h2>Unplanned Expenses</h2>
+        <div class="form-group">
+            <label for="unplannedExpenseName">Expense Name:</label>
+            <input type="text" id="unplannedExpenseName">
+            
+            <label for="unplannedExpenseAmount">Amount:</label>
+            <input type="number" id="unplannedExpenseAmount" step="0.01">
+            
+            <label for="unplannedExpenseDate">Date:</label>
+            <input type="date" id="unplannedExpenseDate">
+            
+            <button onclick="addUnplannedExpense()">Add Unplanned Expense</button>
+        </div>
+        <div id="unplannedExpensesList" class="expense-list"></div>
+    </div>
+
+    <script>
+        let currentBalance = 0;
+        let periodicExpenses = [];
+        let unplannedExpenses = [];
+
+        function setInitialBalance() {
+            const balance = parseFloat(document.getElementById('initialBalance').value);
+            if (!isNaN(balance)) {
+                currentBalance = balance;
+                updateDisplay();
+            }
+        }
+
+        function addPeriodicExpense() {
+            const name = document.getElementById('periodicExpenseName').value;
+            const amount = parseFloat(document.getElementById('periodicExpenseAmount').value);
+            const frequency = document.getElementById('periodicExpenseFrequency').value;
+            
+            if (name && !isNaN(amount)) {
+                periodicExpenses.push({ name, amount, frequency });
+                updatePeriodicExpensesList();
+                updateProjection();
+                
+                // Clear inputs
+                document.getElementById('periodicExpenseName').value = '';
+                document.getElementById('periodicExpenseAmount').value = '';
+            }
+        }
+
+        function addUnplannedExpense() {
+            const name = document.getElementById('unplannedExpenseName').value;
+            const amount = parseFloat(document.getElementById('unplannedExpenseAmount').value);
+            const date = document.getElementById('unplannedExpenseDate').value;
+            
+            if (name && !isNaN(amount) && date) {
+                unplannedExpenses.push({ name, amount, date });
+                updateUnplannedExpensesList();
+                updateProjection();
+                
+                // Clear inputs
+                document.getElementById('unplannedExpenseName').value = '';
+                document.getElementById('unplannedExpenseAmount').value = '';
+                document.getElementById('unplannedExpenseDate').value = '';
+            }
+        }
+
+        function deletePeriodicExpense(index) {
+            periodicExpenses.splice(index, 1);
+            updatePeriodicExpensesList();
+            updateProjection();
+        }
+
+        function deleteUnplannedExpense(index) {
+            unplannedExpenses.splice(index, 1);
+            updateUnplannedExpensesList();
+            updateProjection();
+        }
+
+        function updatePeriodicExpensesList() {
+            const list = document.getElementById('periodicExpensesList');
+            list.innerHTML = '';
+            
+            periodicExpenses.forEach((expense, index) => {
+                const div = document.createElement('div');
+                div.className = 'expense-item';
+                div.innerHTML = `
+                    ${expense.name} - $${expense.amount.toFixed(2)} (${expense.frequency})
+                    <button class="delete-btn" onclick="deletePeriodicExpense(${index})">Delete</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function updateUnplannedExpensesList() {
+            const list = document.getElementById('unplannedExpensesList');
+            list.innerHTML = '';
+            
+            unplannedExpenses.forEach((expense, index) => {
+                const div = document.createElement('div');
+                div.className = 'expense-item';
+                div.innerHTML = `
+                    ${expense.name} - $${expense.amount.toFixed(2)} (${expense.date})
+                    <button class="delete-btn" onclick="deleteUnplannedExpense(${index})">Delete</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function calculatePeriodicExpenseAmount(expense, days) {
+            let dailyAmount = 0;
+            switch(expense.frequency) {
+                case 'daily':
+                    dailyAmount = expense.amount;
+                    break;
+                case 'weekly':
+                    dailyAmount = expense.amount / 7;
+                    break;
+                case 'monthly':
+                    dailyAmount = expense.amount / 30.44; // Average days in a month
+                    break;
+                case 'yearly':
+                    dailyAmount = expense.amount / 365.25; // Account for leap years
+                    break;
+            }
+            return dailyAmount * days;
+        }
+
+        function updateProjection() {
+            const projectionDate = new Date(document.getElementById('projectionDate').value);
+            if (!projectionDate) return;
+
+            const today = new Date();
+            const daysDifference = Math.ceil((projectionDate - today) / (1000 * 60 * 60 * 24));
+            
+            let projectedAmount = currentBalance;
+
+            // Calculate periodic expenses
+            periodicExpenses.forEach(expense => {
+                projectedAmount -= calculatePeriodicExpenseAmount(expense, daysDifference);
+            });
+
+            // Add unplanned expenses that fall within the projection period
+            unplannedExpenses.forEach(expense => {
+                const expenseDate = new Date(expense.date);
+                if (expenseDate <= projectionDate && expenseDate >= today) {
+                    projectedAmount -= expense.amount;
+                }
+            });
+
+            document.getElementById('projectedBalance').textContent = `$${projectedAmount.toFixed(2)}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('currentBalance').textContent = `$${currentBalance.toFixed(2)}`;
+            updateProjection();
+        }
+
+        // Add event listener for projection date changes
+        document.getElementById('projectionDate').addEventListener('change', updateProjection);
+
+        // Set initial date to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('projectionDate').value = tomorrow.toISOString().split('T')[0];
+    </script>
+</body>
+</html>
